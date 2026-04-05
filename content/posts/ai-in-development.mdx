@@ -14,14 +14,11 @@ We can store each int4 packed together into a bigger datatype. I chose to store 
 
 ``` bash
 def ct_u32_unpack_u4(u32_packed: jax.Array) -> jax.Array:
-    """Unpack u4 tensor that was packed into u32 in standard sequential order.
-
-    Used for compressed-tensors pack_quantized format where nibbles are stored
-    in ascending order within each int32 element.
-    """
     u4 = jax.lax.bitcast_convert_type(u32_packed, jnp.uint4)
     return jnp.reshape(u4, u4.shape[:-2] + (-1, ))
 ```
+
+The first line of code says that the computer should treat the int32 model as int4 even though it's really not (and the computer can't actually support it.) Then what happens is that we now have an extra dimension. Why? Because lets say our matrix was something like (n, m), then after expanding it, it becomes (n, m, 8) due to each element being an array. The second line turns it back into (n, m * 8) instead.
 
 ## dense model implementations
 
