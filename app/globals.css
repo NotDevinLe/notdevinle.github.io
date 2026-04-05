@@ -154,3 +154,10 @@ a {
 .article-content a:hover {
   color: var(--fg-muted);
 }
+
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 1.5rem 0;
+}

@@ -1,14 +1,14 @@
 ---
-title: "The Future of AI in Software Development"
-excerpt: "How artificial intelligence is transforming the way we write code and build software applications."
-date: "2024-01-01"
+title: "int4 Quantization on TPUs"
+excerpt: "Maximizing memory efficiency on hardware that doesn't natively take this datatype."
+date: "2026-04-06"
 author: "Le"
-readTime: "7 min read"
+readTime: "20 min read"
 ---
 
-Artificial Intelligence is revolutionizing software development, from code generation to debugging and testing. Let's explore what the future holds.
+TPUs (Tensor Processing Unit) are from google and are designed for dense linear algebra. Unlike GPUs which are really good at parallel compute in general, TPUs are really really good at linear. This motivates me to write code to support int4 quantized models on them for vLLM.
 
-## AI-Powered Code Generation
+## how the model is stored
 
 Tools like GitHub Copilot and ChatGPT are changing how developers write code. They can:
 
@@ -16,11 +16,11 @@ Tools like GitHub Copilot and ChatGPT are changing how developers write code. Th
 - Suggest implementations based on comments
 - Help with refactoring and optimization
 
-## Automated Testing
+## dense model implementations
 
 AI can generate test cases, identify edge cases, and even write test code automatically. This reduces the time spent on testing while improving coverage.
 
-## Code Review Assistance
+## mixture of expert model implementation
 
 AI tools can review code for:
 
@@ -29,7 +29,7 @@ AI tools can review code for:
 - Best practices
 - Style consistency
 
-## The Developer's Role
+## tradeoffs i had to make
 
 While AI is powerful, developers remain essential for:
 
