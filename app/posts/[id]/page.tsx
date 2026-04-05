@@ -1,13 +1,132 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPostById, getAllPosts } from '@/lib/posts'
-import { BlogPost } from '@/lib/posts'
 
 export async function generateStaticParams() {
   const posts = getAllPosts()
-  return posts.map((post) => ({
-    id: post.id,
-  }))
+  return posts.map((post) => ({ id: post.id }))
+}
+
+function renderInline(text: string): (string | React.ReactElement)[] {
+  const result: (string | React.ReactElement)[] = []
+  let remaining = text
+  let k = 0
+
+  while (remaining.length > 0) {
+    const codeIdx = remaining.indexOf('`')
+    const boldIdx = remaining.indexOf('**')
+
+    if (codeIdx === -1 && boldIdx === -1) {
+      result.push(remaining)
+      break
+    }
+
+    let nextIdx = Infinity
+    let marker = ''
+    if (codeIdx !== -1) { nextIdx = codeIdx; marker = '`' }
+    if (boldIdx !== -1 && boldIdx < nextIdx) { nextIdx = boldIdx; marker = '**' }
+
+    if (nextIdx > 0) result.push(remaining.slice(0, nextIdx))
+    remaining = remaining.slice(nextIdx + marker.length)
+
+    const closeIdx = remaining.indexOf(marker)
+    if (closeIdx === -1) {
+      result.push(marker + remaining)
+      break
+    }
+
+    const inner = remaining.slice(0, closeIdx)
+    remaining = remaining.slice(closeIdx + marker.length)
+
+    if (marker === '`') {
+      result.push(<code key={k++}>{inner}</code>)
+    } else {
+      result.push(<strong key={k++}>{inner}</strong>)
+    }
+  }
+
+  return result
+}
+
+function renderContent(content: string) {
+  const lines = content.split('\n')
+  const elements: React.ReactElement[] = []
+  let i = 0
+  let key = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    if (line.startsWith('```')) {
+      const codeLines: string[] = []
+      i++
+      while (i < lines.length && !lines[i].startsWith('```')) {
+        codeLines.push(lines[i])
+        i++
+      }
+      i++
+      elements.push(
+        <pre key={key++}>
+          <code>{codeLines.join('\n')}</code>
+        </pre>
+      )
+      continue
+    }
+
+    if (line.startsWith('### ')) {
+      elements.push(<h3 key={key++}>{renderInline(line.slice(4))}</h3>)
+      i++
+      continue
+    }
+    if (line.startsWith('## ')) {
+      elements.push(<h2 key={key++}>{renderInline(line.slice(3))}</h2>)
+      i++
+      continue
+    }
+    if (line.startsWith('# ')) {
+      elements.push(<h1 key={key++}>{renderInline(line.slice(2))}</h1>)
+      i++
+      continue
+    }
+
+    if (line.trim() === '') {
+      i++
+      continue
+    }
+
+    if (line.startsWith('- ')) {
+      const items: string[] = []
+      while (i < lines.length && lines[i].startsWith('- ')) {
+        items.push(lines[i].slice(2))
+        i++
+      }
+      elements.push(
+        <ul key={key++}>
+          {items.map((item, j) => <li key={j}>{renderInline(item)}</li>)}
+        </ul>
+      )
+      continue
+    }
+
+    if (/^\d+\.\s/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s/, ''))
+        i++
+      }
+      elements.push(
+        <ol key={key++}>
+          {items.map((item, j) => <li key={j}>{renderInline(item)}</li>)}
+        </ol>
+      )
+      continue
+    }
+
+    elements.push(<p key={key++}>{renderInline(line)}</p>)
+    i++
+  }
+
+  return elements
 }
 
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,97 +137,30 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     notFound()
   }
 
+  const date = new Date(post.date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).toLowerCase()
+
   return (
-    <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Back Button */}
-      <Link 
-        href="/"
-        className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-8 transition-colors"
-      >
-        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back to Home
+    <article>
+      <Link href="/" className="nav-link">
+        ← back
       </Link>
 
-      {/* Post Header */}
-      <header className="mb-8">
-        <div className="flex items-center text-sm text-gray-500 mb-4">
-          <span className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-xs font-medium">
-            {post.category}
-          </span>
-          <span className="mx-3">•</span>
-          <time dateTime={post.date}>
-            {new Date(post.date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </time>
-          <span className="mx-3">•</span>
-          <span>{post.readTime}</span>
-        </div>
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-          {post.title}
+      <header className="mt-10 mb-10">
+        <h1 className="font-serif text-[2rem] md:text-[2.5rem] font-bold leading-tight mb-3">
+          {post.title.toLowerCase()}
         </h1>
-        <div className="flex items-center text-gray-600">
-          <span className="font-medium">By {post.author}</span>
-        </div>
+        <p className="text-[color:var(--fg-muted)] text-sm">
+          {post.author.toLowerCase()} · {date} · {post.readTime.toLowerCase()}
+        </p>
       </header>
 
-      {/* Post Content */}
-      <div className="prose prose-lg max-w-none">
-        <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-          {post.content.split('\n').map((paragraph, index) => {
-            if (paragraph.startsWith('# ')) {
-              return <h1 key={index} className="text-3xl font-bold mt-8 mb-4 text-gray-900">{paragraph.substring(2)}</h1>
-            }
-            if (paragraph.startsWith('## ')) {
-              return <h2 key={index} className="text-2xl font-bold mt-6 mb-3 text-gray-900">{paragraph.substring(3)}</h2>
-            }
-            if (paragraph.startsWith('### ')) {
-              return <h3 key={index} className="text-xl font-bold mt-4 mb-2 text-gray-900">{paragraph.substring(4)}</h3>
-            }
-            if (paragraph.startsWith('```')) {
-              return null // Skip code block markers for now
-            }
-            if (paragraph.trim() === '') {
-              return <br key={index} />
-            }
-            if (paragraph.includes('`')) {
-              // Simple inline code handling
-              const parts = paragraph.split('`')
-              return (
-                <p key={index} className="mb-4">
-                  {parts.map((part, i) => 
-                    i % 2 === 0 ? (
-                      <span key={i}>{part}</span>
-                    ) : (
-                      <code key={i} className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-primary-700">
-                        {part}
-                      </code>
-                    )
-                  )}
-                </p>
-              )
-            }
-            return <p key={index} className="mb-4">{paragraph}</p>
-          })}
-        </div>
+      <div className="article-content">
+        {renderContent(post.content)}
       </div>
-
-      {/* Post Footer */}
-      <footer className="mt-12 pt-8 border-t border-gray-200">
-        <Link 
-          href="/"
-          className="inline-flex items-center text-primary-600 hover:text-primary-700 transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Home
-        </Link>
-      </footer>
     </article>
   )
 }
