@@ -1,0 +1,97 @@
+---
+title: "Building a Blog with Next.js and GitHub Pages"
+excerpt: "A complete guide to creating a modern blog website using Next.js and deploying it to GitHub Pages for free."
+date: "2024-01-20"
+author: "Le"
+readTime: "6 min read"
+---
+
+Creating a personal blog has never been easier. With Next.js 14 and GitHub Pages, you can build and deploy a beautiful, fast blog completely free. Let me walk you through the process.
+
+## Why Next.js?
+
+Next.js is a powerful React framework that offers:
+
+- **Static Site Generation**: Perfect for blogs that don't need server-side rendering
+- **Great Performance**: Optimized out of the box with code splitting and image optimization
+- **Developer Experience**: Excellent tooling and hot reload
+- **TypeScript Support**: Built-in type safety
+
+## Setting Up the Project
+
+First, create a new Next.js project:
+
+```bash
+npx create-next-app@latest my-blog
+cd my-blog
+```
+
+Choose the following options:
+- TypeScript: Yes
+- ESLint: Yes
+- Tailwind CSS: Yes
+- App Router: Yes
+- src/ directory: No
+
+## Configuring for GitHub Pages
+
+To deploy to GitHub Pages, you need to configure Next.js for static export. Update your `next.config.js`:
+
+```javascript
+const nextConfig = {
+  output: 'export',
+  images: {
+    unoptimized: true,
+  },
+}
+```
+
+## Creating Blog Posts
+
+Store your blog posts in a simple data structure. You can use a TypeScript file or even markdown files with a parser. For simplicity, we'll use a TypeScript array:
+
+```typescript
+export interface BlogPost {
+  id: string
+  title: string
+  content: string
+  date: string
+  author: string
+}
+```
+
+## Deployment with GitHub Actions
+
+Set up automatic deployment using GitHub Actions. Create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+```
+
+## Benefits of This Approach
+
+1. **Free Hosting**: GitHub Pages is completely free
+2. **Automatic Deployments**: Every push to main triggers a new deployment
+3. **Fast Performance**: Static sites load incredibly fast
+4. **Easy Updates**: Just push your changes and they go live automatically
+
+## Next Steps
+
+- Add more features like tags, categories, or search
+- Customize the design to match your brand
+- Add analytics to track your visitors
+- Set up a custom domain
+
+Building a blog doesn't have to be complicated. With Next.js and GitHub Pages, you have everything you need to get started!

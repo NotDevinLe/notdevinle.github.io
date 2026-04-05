@@ -1,0 +1,71 @@
+---
+title: "Modern CSS Techniques for 2024"
+excerpt: "Explore the latest CSS features and techniques that can help you build more beautiful and performant websites."
+date: "2024-01-05"
+author: "Le"
+readTime: "6 min read"
+---
+
+CSS continues to evolve, bringing new features that make styling easier and more powerful. Let's look at some modern techniques you should be using.
+
+## Container Queries
+
+Container queries allow you to style elements based on their container's size, not just the viewport:
+
+```css
+.card-container {
+  container-type: inline-size;
+}
+
+@container (min-width: 400px) {
+  .card {
+    display: flex;
+  }
+}
+```
+
+## CSS Grid Advanced Patterns
+
+CSS Grid has become essential for modern layouts:
+
+```css
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+```
+
+## Custom Properties
+
+CSS custom properties (variables) enable dynamic theming:
+
+```css
+:root {
+  --primary-color: #0ea5e9;
+  --spacing: 1rem;
+}
+
+.button {
+  background-color: var(--primary-color);
+  padding: var(--spacing);
+}
+```
+
+## Modern Selectors
+
+New selectors like `:has()` and `:is()` provide more flexibility:
+
+```css
+.card:has(.button) {
+  border: 2px solid blue;
+}
+```
+
+## Performance Tips
+
+1. Use `content-visibility` for better rendering performance
+2. Leverage `will-change` sparingly for animations
+3. Minimize layout shifts with proper sizing
+
+Modern CSS gives us powerful tools to create beautiful, performant interfaces.

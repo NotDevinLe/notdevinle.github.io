@@ -1,0 +1,50 @@
+---
+title: "Mastering TypeScript: Advanced Patterns"
+excerpt: "Dive deep into advanced TypeScript patterns and techniques that will make you a more effective developer."
+date: "2024-01-10"
+author: "Le"
+readTime: "8 min read"
+---
+
+TypeScript has become the de facto standard for building large-scale JavaScript applications. Let's explore some advanced patterns that can help you write more robust and maintainable code.
+
+## Generic Constraints
+
+Generics are powerful, but constraints make them even more useful:
+
+```typescript
+interface Lengthwise {
+  length: number;
+}
+
+function logLength<T extends Lengthwise>(arg: T): T {
+  console.log(arg.length);
+  return arg;
+}
+```
+
+## Utility Types
+
+TypeScript provides several utility types that can save you time:
+
+- `Partial<T>`: Makes all properties optional
+- `Required<T>`: Makes all properties required
+- `Pick<T, K>`: Select specific properties
+- `Omit<T, K>`: Exclude specific properties
+
+## Conditional Types
+
+Conditional types allow you to create types that depend on other types:
+
+```typescript
+type NonNullable<T> = T extends null | undefined ? never : T;
+```
+
+## Best Practices
+
+1. Use strict mode for better type safety
+2. Leverage type inference when possible
+3. Create reusable type utilities
+4. Document complex types with JSDoc comments
+
+TypeScript's type system is incredibly powerful. Mastering these patterns will help you write better code.
