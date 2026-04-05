@@ -6,15 +6,22 @@ author: "Le"
 readTime: "20 min read"
 ---
 
-TPUs (Tensor Processing Unit) are from google and are designed for dense linear algebra. Unlike GPUs which are really good at parallel compute in general, TPUs are really really good at linear. This motivates me to write code to support int4 quantized models on them for vLLM.
+TPUs (Tensor Processing Unit) are from google and are designed for dense linear algebra. Unlike GPUs which are really good at parallel compute in general, TPUs are really really good at linear. This motivates me to write code to support int4 quantized models on them for vLLM. However, TPUs don't natively support int4 datatypes, so we have to write some workarounds.
 
 ## how the model is stored
 
-Tools like GitHub Copilot and ChatGPT are changing how developers write code. They can:
+We can store each int4 packed together into a bigger datatype. I chose to store 8 int4s into a int32. To reinterpret this as a int4 model we have the useful function:
 
-- Generate boilerplate code instantly
-- Suggest implementations based on comments
-- Help with refactoring and optimization
+``` bash
+def ct_u32_unpack_u4(u32_packed: jax.Array) -> jax.Array:
+    """Unpack u4 tensor that was packed into u32 in standard sequential order.
+
+    Used for compressed-tensors pack_quantized format where nibbles are stored
+    in ascending order within each int32 element.
+    """
+    u4 = jax.lax.bitcast_convert_type(u32_packed, jnp.uint4)
+    return jnp.reshape(u4, u4.shape[:-2] + (-1, ))
+```
 
 ## dense model implementations
 
