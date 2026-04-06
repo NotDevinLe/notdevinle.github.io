@@ -32,21 +32,24 @@ create_weights(layer, output_partition_sizes, input_size_per_partition, output_s
 
 vLLM will call this to instantiate empty layers. Note that this logic is called after the code splits a layer across gpus (if applicable) and the following parameters are per-gpu. `Layer` is litterally the layer we want to modify and add stuff to. `output_partition_sizes` is a list of integers such that [q, k, v] denote the output sizes of each respective matrix. `input_size_per_partition` is the number of input features this gpu is responsible for operating. All of those parameters are for the purpose of megatron-style parallelism which we won't cover in this post.
 
-`PackedvLLMParameter` is a function that allows you to create matrices that pack small datatypes into larger ones (this is exactly what we want for storing our int4s into a int32). We use this to create the weight matrix that work for us. We then add the scales matrix. If the layer is assymetric then we add the zero point matrix.
+`PackedvLLMParameter` is a function that allows you to create matrices that pack small datatypes into larger ones (this is exactly what we want for storing our int4s into a int32). We use this to create the weight matrix that work for us. If applicable then we also instantiate empty actorder, scale, and zero point matrices.
 
 ```bash
 process_weights_after_loading(layer)
 ```
 
-This function is the one that actually loads everything in.
+This function is the one that actually loads everything in and makes things easier for us during the inference time. Firstly, it loads all the matrices that we initialized in the previous section to have their real values. 
+
+After loading, we have to process each weight matrix. Start by unpacking the matrix to be instead of int4 to be int8. The most important thing is that we have to note that columns are out of order in terms of groups. We want all columns to be adjacent to their group members. Therefore, we permute the columns based on actorder. Afterwards, we unpack all other matrices that also need to be unpacked and return this int8 matrix. Notice that we now have an int8 matrix in memory and not an int4. 
+
+## mixture of experts model implementation
+
+[to be added]
 
 ## tradeoffs i had to make
 
-While AI is powerful, developers remain essential for:
+[to be added]
 
-- Understanding business requirements
-- Making architectural decisions
-- Ensuring code quality and maintainability
-- Debugging complex issues
+## fin
 
 This was one of my hardest projects since correctness and optimality were critical. If we sacraficed speed or memory, then it defeats the purpose of pursuing this project in the first place. Overall, I learned a lot from this project, specifically about general quantization, TPU hardware, and jax/xla.
