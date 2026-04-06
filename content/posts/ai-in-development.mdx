@@ -26,9 +26,19 @@ Now you might be wondering, "isn't this really inefficient because we're constan
 
 Now we get into the implementation of how do we take a quantized model and dequantize it. We create a class called VllmCompressedTensorsWNA16 which inherits from vLLM's CompressedTensorsScheme class. This class will hold all quantization information such as the zero points, weights, scales, symmetry and other parameters. From this class, there are 6 primary functions.
 
-Firstly, we have `create_weights(layer, output_partition_sizes, input_size_per_partition, output_size, input_size, params_dtype, weight_loader)`. vLLM will call this to instantiate empty layers. Note that this logic is called after the code splits a layer across gpus (if applicable) and the following parameters are per-gpu. `Layer` is litterally the layer we want to modify and add stuff to. `output_partition_sizes` is a list of integers such that [q, k, v] denote the output sizes of each respective matrix. `input_size_per_partition` is the number of input features this gpu is holding. The rest are quite trivial.
+```bash
+create_weights(layer, output_partition_sizes, input_size_per_partition, output_size, input_size, params_dtype, weight_loader)
+```
 
+vLLM will call this to instantiate empty layers. Note that this logic is called after the code splits a layer across gpus (if applicable) and the following parameters are per-gpu. `Layer` is litterally the layer we want to modify and add stuff to. `output_partition_sizes` is a list of integers such that [q, k, v] denote the output sizes of each respective matrix. `input_size_per_partition` is the number of input features this gpu is responsible for operating. All of those parameters are for the purpose of megatron-style parallelism which we won't cover in this post.
 
+`PackedvLLMParameter` is a function that allows you to create matrices that pack small datatypes into larger ones (this is exactly what we want for storing our int4s into a int32). We use this to create the weight matrix that work for us. We then add the scales matrix. If the layer is assymetric then we add the zero point matrix.
+
+```bash
+process_weights_after_loading(layer)
+```
+
+This function is the one that actually loads everything in.
 
 ## tradeoffs i had to make
 
@@ -39,13 +49,4 @@ While AI is powerful, developers remain essential for:
 - Ensuring code quality and maintainability
 - Debugging complex issues
 
-## Looking Ahead
-
-The future of development will likely involve:
-
-- More AI-assisted workflows
-- Better integration of AI tools
-- Focus on higher-level problem solving
-- Continuous learning and adaptation
-
-AI is a tool that amplifies developer capabilities. Embrace it, but remember that human judgment and creativity remain irreplaceable.
+This was one of my hardest projects since correctness and optimality were critical. If we sacraficed speed or memory, then it defeats the purpose of pursuing this project in the first place. Overall, I learned a lot from this project, specifically about general quantization, TPU hardware, and jax/xla.
