@@ -22,7 +22,7 @@ The first line of code says that the computer should treat the int32 model as in
 
 Now you might be wondering, "isn't this really inefficient because we're constantly doing bitshifts under the hood?" Well, yes since the TPUs don't support int4, it will do bitshifts to extract each element, but the XLA is like this magic box that will make things a lot faster than if we bitshifted things ourselves.
 
-## dense model implementation
+## implementation
 
 Now we get into the implementation of how do we take a quantized model and dequantize it. We create a class called VllmCompressedTensorsWNA16 which inherits from vLLM's CompressedTensorsScheme class. This class will hold all quantization information such as the zero points, weights, scales, symmetry and other parameters. From this class, there are 5 primary functions.
 
@@ -60,14 +60,6 @@ Although they're a bit different, a high level intuition for what they do is the
 Some notes about this is that although this seems to be just storing int8 in memory and then bloating up each layer during inference to be bfloat16, XLA will detect our operations and make it so that we only expand parts of the matrix up at a time and make it highly ooptimized for speed and memory. This means we aren't ever actually loading in a full bfloat16 matrix.
 
 this concludes our implementation of the dense model int4 quantization code
-
-## mixture of experts model implementation
-
-[to be added]
-
-## tradeoffs i had to make
-
-[to be added]
 
 ## fin
 
