@@ -12,6 +12,16 @@ previously, for my system I was hashing an entire prompt and checking for it acr
 
 the solution is to use a useful feature of vLLM's engine `kv_events` which is a parameter you can enable to instantiate a zmq publisher in which you can now spin up your own zmq subscriber and keep track of what is truly in a worker's kv cache.
 
+## naive load-balancing
+
+`slot count` is how many requests a worker is currently processing. Max capacity is how much the worker can handle before overloading and this is hardcoded for each tpu pod type in my system. The score for each model is just
+
+```bash
+slot_counts / max_capacity
+```
+
+in which we just sort by this and select the top choice.
+
 ## kv_events
 
 Everything is wrapped in an `EventBatch` object. This has three fields:
@@ -58,3 +68,14 @@ block_access:{hash}              LRU ordering for when KV redis hits memory limi
 tokenize:{prompt_hash}           The tokens corresponding to such hash. If we have a cache miss then we'll have to hash the entire prompt and set it as a kv pair.
 
 ```
+
+So the general pipeline is that whenever we get a request from a user:
+    1. Call vLLM's tokenize endpoint on the prompt. This will auto-apply the chat template and tokenize things so that we can have the expected format that vLLM has.
+    2. Break the tokens up into blocks of 16 tokens and run our block hashing algorithm
+    3. Look up if tokenize:{prompt_hash} is a key yet, if not then insert the (tokenize:{prompt_hash}, token_ids) pair.
+        - This is to avoid calling vLLM's tokenize endpoint each time we have the same prompt.
+    4. For each block hash we have from step 2, query if there exists `block:{block_x_hash}`.
+        -We keep iterating through the blocks keeping track of workers that are shared between these blocks.
+        -Stop once these workers don't exist and use the deepest worker
+
+The worker that is found is going to have a 0.5x discount for the current score.
