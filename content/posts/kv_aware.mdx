@@ -12,6 +12,26 @@ previously, for my system I was hashing an entire prompt and checking for it acr
 
 the solution is to use a useful feature of vLLM's engine `kv_events` which is a parameter you can enable to instantiate a zmq publisher in which you can now spin up your own zmq subscriber and keep track of what is truly in a worker's kv cache.
 
+## kv_events
+
+Everything is wrapped in an `EventBatch` object. This has three fields:
+    - ts: the timestamp this batch was sent
+    - events: this is a list of all the events in this current batch
+    - data_parallel_rank: which gpu worker in a vLLM engine is sending this batch.
+
+That is to simply not overwhelm the servers by sending things one by one. What really matters is each element in the `events` list. It can take three different types:
+
+`BlockStored` is the event in which we add something to our kv-cache. The event has the following parameters:
+    - token_ids: the raw sequence of integers denoting the cached prefix
+    - block_hashes: the unique id for this specific memory block
+    - parent_block_hash: the id of the memory block that came before it (unhash current block_hash and then remove token_ids)
+    - data_parallel_rank: the gpu
+
+`BlockRemoved` is the event something gets evicted from the kv-cache.
+    - block_hashes: the block hash of something that was just deleted.
+
+`AllBlocksCleared` which resets the entire kv cache.
+
 ## architecture
 
 lets start with how vllm interacts with our redis database.
@@ -24,6 +44,6 @@ vLLM Worker (PUB :5557) ----> rproxy (SUB) ----> Redis Index
 vLLM Worker (ROUTER :5558) <--> rproxy (DEALER) ----> Redis Index
 ```
 
-this is the absolute barebones of what's happening which is quite simple. the worker will publish everything on the port 5557 and there is a publisher-subscriber relation between the two of them. 
+this is the absolute barebones of what's happening which is quite simple. the worker will publish everything on the `port 5557` and there is a `publisher-subscriber` relation between the two of them. 
 
-each request comes with an incementing id tag that helps us know what the last successful request we got from the publisher was. If we see that there is a gap (ie. last id we had was 100 but we just received 105) then we need a way to get this data back reliably. This is why we add a dealer such that we introduce a router-dealer relationship. This is guaranteed to be correct but is much slower and is called whenever a subscriber sees its missing information.
+each request comes with an incementing id tag that helps us know what the last successful request we got from the publisher was. If we see that there is a gap (ie. last id we had was 100 but we just received 105) then we need a way to get this data back reliably. This is why we add a dealer such that we introduce a `router-dealer` relationship. This is guaranteed to be correct but is much slower and is called whenever a subscriber sees its missing information.
