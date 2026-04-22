@@ -14,12 +14,16 @@ the solution is to use a useful feature of vLLM's engine `kv_events` which is a 
 
 ## architecture
 
+lets start with how vllm interacts with our redis database.
+
 ```bash
-vllm worker -> zmq publish (event)
-event -> rproxy subscriber
-subscriber -> kv-index redis server
+[Live Path: Fast/Lossy]
+vLLM Worker (PUB :5557) ----> rproxy (SUB) ----> Redis Index
+
+[Recovery Path: Slow/Guaranteed]
+vLLM Worker (ROUTER :5558) <--> rproxy (DEALER) ----> Redis Index
 ```
 
-this is the absolute barebones of what's happening which is quite simple. the worker will publish everything on the port 5558 and there is a publisher-subscriber relation between the two of them. 
+this is the absolute barebones of what's happening which is quite simple. the worker will publish everything on the port 5557 and there is a publisher-subscriber relation between the two of them. 
 
-Now, what happens if somewhere in this very fast transaction of information the subscriber didn't capture somehting it was supposed to? This is why we add a dealer such that we introduce a router-dealer relationship. This is guaranteed to be correct but is much slower and is called whenever a subscriber sees its missing information.
+each request comes with an incementing id tag that helps us know what the last successful request we got from the publisher was. If we see that there is a gap (ie. last id we had was 100 but we just received 105) then we need a way to get this data back reliably. This is why we add a dealer such that we introduce a router-dealer relationship. This is guaranteed to be correct but is much slower and is called whenever a subscriber sees its missing information.
