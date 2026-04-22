@@ -1,7 +1,7 @@
 ---
 title: "kv-cache aware load balancing"
 excerpt: "how to most efficiently load balance across many tpus for llms"
-date: "2026-21-06"
+date: "2026-04-21"
 author: "Le"
 readTime: "20 min read"
 ---
@@ -19,3 +19,7 @@ vllm worker -> zmq publish (event)
 event -> rproxy subscriber
 subscriber -> kv-index redis server
 ```
+
+this is the absolute barebones of what's happening which is quite simple. the worker will publish everything on the port 5558 and there is a publisher-subscriber relation between the two of them. 
+
+Now, what happens if somewhere in this very fast transaction of information the subscriber didn't capture somehting it was supposed to? This is why we add a dealer such that we introduce a router-dealer relationship. This is guaranteed to be correct but is much slower and is called whenever a subscriber sees its missing information.
