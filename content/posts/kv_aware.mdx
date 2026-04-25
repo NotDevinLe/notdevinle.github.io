@@ -8,39 +8,71 @@ readTime: "20 min read"
 
 previously, for my system I was hashing an entire prompt and checking for it across all my tpus. However, this is not necessarily a good idea because:
     - this doesn't take into account if certain kv pairs got evicted from a worker's memory
-    - we want to look at smaller prefixes
+    - we want to look at smaller prefixes so multi-turn chats and shared system prompts actually score
 
-the solution is to use a useful feature of vLLM's engine `kv_events` which is a parameter you can enable to instantiate a zmq publisher in which you can now spin up your own zmq subscriber and keep track of what is truly in a worker's kv cache.
+the fix is to stop guessing about what's on a worker and ask the worker directly. vLLM's engine has a `kv_events` flag which spins up a zmq publisher whenever a block is stored, removed, or cleared. spin up a subscriber on rproxy and now we have ground truth for what's actually in each worker's kv cache.
 
 ## naive load-balancing
 
-`slot count` is how many requests a worker is currently processing. Max capacity is how much the worker can handle before overloading and this is hardcoded for each tpu pod type in my system. The score for each model is just
+`slot count` is how many requests a worker is currently processing. max capacity is how much the worker can handle before overloading and this is hardcoded for each tpu pod type in my system. the score for each model is just
 
 ```bash
 slot_counts / max_capacity
 ```
 
-in which we just sort by this and select the top choice.
+in which we just sort by this and select the top choice. with kv-cache awareness, a worker that already has the prefix gets a 0.5x discount on this score, biasing the router toward cache hits without ignoring load entirely.
 
 ## kv_events
 
-Everything is wrapped in an `EventBatch` object. This has three fields:
-    - ts: the timestamp this batch was sent
-    - events: this is a list of all the events in this current batch
-    - data_parallel_rank: which gpu worker in a vLLM engine is sending this batch.
+everything is wrapped in an `EventBatch` object. this has three fields:
+    - `ts`: the timestamp this batch was sent
+    - `events`: a list of all the events in this current batch
+    - `data_parallel_rank`: which gpu worker in a vLLM engine is sending this batch
 
-That is to simply not overwhelm the servers by sending things one by one. What really matters is each element in the `events` list. It can take three different types:
+note that `data_parallel_rank` is optional, so the batch will arrive as either a 2-tuple `(ts, events)` or a 3-tuple `(ts, events, dp_rank)`. the decoder needs to handle both arities or you silently drop half the events depending on which vLLM version you're talking to.
 
-`BlockStored` is the event in which we add something to our kv-cache. The event has the following parameters:
-    - token_ids: the raw sequence of integers denoting the cached prefix
-    - block_hashes: the unique id for this specific memory block
-    - parent_block_hash: the id of the memory block that came before it (unhash current block_hash and then remove token_ids)
-    - data_parallel_rank: the gpu
+batching exists to keep the publisher from getting hammered one event at a time. what really matters is each element in the `events` list. it can take three different types:
 
-`BlockRemoved` is the event something gets evicted from the kv-cache.
-    - block_hashes: the block hash of something that was just deleted.
+`BlockStored` is the event in which we add something to the kv-cache. the event has the following parameters:
+    - `token_ids`: the raw sequence of integers denoting the cached prefix
+    - `block_hashes`: the unique id for this specific memory block
+    - `parent_block_hash`: the id of the memory block that came before it
+    - `block_size`: how many tokens are in this block
+    - `lora_id`: which lora adapter (if any) the block belongs to
 
-`AllBlocksCleared` which resets the entire kv cache.
+one gotcha here: `block_hashes` arrive as either an int64 or a 32-byte SHA-256 depending on vLLM's config. you have to normalize to a single representation (we take the first 8 bytes big-endian) or your reverse-index lookups will miss.
+
+`BlockRemoved` is fired when something gets evicted from the kv-cache.
+    - `block_hashes`: the block hash of something that was just deleted
+
+`AllBlocksCleared` resets the entire kv cache. easy to skip this one — it has no payload — but if you no-op it your routing table will keep claiming a worker has prefixes it long since flushed. drop everything for that worker on receipt.
+
+## why re-hash instead of using vLLM's hash
+
+the `block_hashes` in events are vLLM's internal hashes. on the request side, all we have is the prompt — we'd need to replicate vLLM's hashing algorithm exactly to match against them. that's a treadmill: every time vLLM changes its hash function, we miss every cache.
+
+so we re-hash. on the request side we tokenize the prompt and compute our own chained hash over the tokens. on the subscriber side, since `BlockStored` carries `token_ids`, we re-hash the same way over those tokens. both paths produce the same value if both paths see the same tokens — which is exactly the property we need.
+
+the chain looks like:
+
+```
+tokens_bytes = concat(BE_u32(tok) for tok in block_tokens)
+parent_bytes = LE_u64(parent_rproxy_hash)   // 0 for root
+rproxy_hash  = blake3(parent_bytes || tokens_bytes).as_u64()
+```
+
+blake3 was already a dep, the byte encoding is frozen, and the hash function lives in one file with unit tests so the request and subscriber sides cannot drift.
+
+## decoder/writer split
+
+a subtle thing: the chained hash on the subscriber side cannot happen at decode time. consider a 128-token prompt that vLLM emits as two events:
+
+    - event A: `parent_block_hash=None`, blocks `[E0..E3]`, tokens `T0..T64`
+    - event B: `parent_block_hash=E3`, blocks `[E4..E7]`, tokens `T64..T128`
+
+on the request side, when a user sends the full 128 tokens we chain `R0..R7` starting from `parent=0`. for the subscriber side to produce those same values, event B's chain has to start from `R3` — which means resolving `E3 → R3`. that lookup lives in redis (`engine:<model>:<worker>:<E3> → R3`). the decoder has no redis access; the writer does.
+
+so the decoder is pure: msgpack bytes → typed event with raw wire fields. the writer holds the redis client, resolves parents, computes the chain, and writes the routing entries. if you collapse them and chain from zero at decode time, every multi-event prompt produces hashes that never match the request side and routing silently degrades to no-op.
 
 ## information flow
 
@@ -54,30 +86,65 @@ vLLM Worker (PUB :5557) ----> rproxy (SUB) ----> Redis Index
 vLLM Worker (ROUTER :5558) <--> rproxy (DEALER) ----> Redis Index
 ```
 
-this is the absolute barebones of what's happening which is quite simple. the worker will publish everything on the `port 5557` and there is a `publisher-subscriber` relation between the two of them. 
+the worker publishes everything on port `5557` and there's a `pub-sub` relation between the two of them. each batch comes wrapped in a 3-frame zmq multipart: `[topic, seq_be_u64, payload]`. that big-endian sequence number on the topic frame is what makes recovery possible.
 
-each request comes with an incementing id tag that helps us know what the last successful request we got from the publisher was. If we see that there is a gap (ie. last id we had was 100 but we just received 105) then we need a way to get this data back reliably. This is why we add a dealer such that we introduce a `router-dealer` relationship. This is guaranteed to be correct but is much slower and is called whenever a subscriber sees its missing information.
+each request comes with an incrementing id tag that helps us know what the last successful request we got from the publisher was. if we see that there is a gap (ie. last id we had was 100 but we just received 105) then we need a way to get this data back reliably. this is why we add a dealer such that we introduce a `router-dealer` relationship. the rproxy sends `[empty, u64_be(start_seq)]` on the dealer socket and the worker replays the missed batches. guaranteed-delivery, but slower, so we only call it on gap detection or reconnect.
+
+one footgun worth flagging: if you configure vLLM with `tcp://0.0.0.0:5557` instead of `tcp://*:5557`, the pub socket silently `connect()`s instead of `bind()`s and never accepts subscribers. vLLM picks bind-vs-connect by string-matching `*`, `::`, `ipc://`, or `inproc://` in the endpoint. `0.0.0.0` matches none of these. the dealer socket binds unconditionally, so you'll see `:5558` up while `:5557` quietly produces nothing.
 
 ## redis structure
 
 ```
-
-block:<model>:<rproxy_hash> — SET of worker IPs. Routing table.
-engine:<model>:<worker>:<engine_hash> — STRING holding rproxy_hash. E→R reverse index.
-block_access:<model> — ZSET for LRU eviction.
-seq:<worker> — STRING u64. Replay cursor for the router-dealer reconnect logic.
-dedup:<worker>:<engine_hash>:<evt> — SETNX with 60s TTL. Dedupe when TP>1 (not load-bearing for you since TP=1 per engine).
-
-
+block:<model>:<rproxy_hash>          → SET of worker IPs. routing table.
+engine:<model>:<worker>:<engine_hash> → STRING holding rproxy_hash. E→R reverse index.
+block_access:<model>                  → ZSET, score=last_access, member=rproxy_hash. LRU.
+seq:<worker>                          → STRING u64. replay cursor.
+dedup:<worker>:<engine_hash>:<evt>    → SETNX with 60s TTL. dedupe when TP>1.
 ```
 
-So the general pipeline is that whenever we get a request from a user:
-    1. Call vLLM's tokenize endpoint on the prompt. This will auto-apply the chat template and tokenize things so that we can have the expected format that vLLM has.
-    2. Break the tokens up into blocks of 16 tokens and run our block hashing algorithm
-    3. Look up if tokenize:{prompt_hash} is a key yet, if not then insert the (tokenize:{prompt_hash}, token_ids) pair.
-        - This is to avoid calling vLLM's tokenize endpoint each time we have the same prompt.
-    4. For each block hash we have from step 2, query if there exists `block:{block_x_hash}`.
-        -We keep iterating through the blocks keeping track of workers that are shared between these blocks.
-        -Stop once these workers don't exist and use the deepest worker
+a few notes on why these are shaped this way:
 
-The worker that is found is going to have a 0.5x discount for the current score.
+`block_access` is per-model rather than per-block. one zset per model means eviction is a single `ZRANGEBYSCORE` + `ZREMRANGEBYRANK` pass; a zset per block would explode key cardinality without buying anything. when memory pressure hits, we sweep the bottom of the set.
+
+`dedup` exists because tensor-parallel and expert-parallel deployments emit the same event from multiple ranks. without dedupe the same `BlockStored` writes the routing entry N times — correct but wasteful. `SETNX` with a 60s TTL collapses them.
+
+`seq:<worker>` gets persisted at 1s cadence. when rproxy restarts, the subscriber requests replay from `last_seq + 1` instead of starting over from zero, which would either re-process the entire history or silently miss whatever happened during the downtime.
+
+the kv index lives in its own redis instance, separate from the one holding rate limits and routing config. it churns hard (events arrive at hundreds-per-second under load) and runs `allkeys-lru`, while the main redis runs `noeviction`. mixing them gets you evicted rate-limit counters at the worst possible moment.
+
+## tokenization
+
+the request side needs `token_ids` to compute the chained hash. easy answer: load a tokenizer in rproxy. wrong answer: chat templates drift. vLLM applies its own jinja chat template before tokenizing, and if the router's template diverges by a single whitespace the tokens differ and every block hash misses.
+
+so we don't ship a tokenizer in rproxy. we call vLLM's `/tokenize` endpoint on a healthy worker round-robin:
+
+```
+POST <worker>:8000/tokenize
+{
+  "model": "<model>",
+  "messages": [...],
+  "add_generation_prompt": true,
+  "add_special_tokens": false
+}
+```
+
+vLLM stays the source of truth for its own template. to avoid paying the rtt on every request, we cache the result keyed by `sha256(bincode(model, messages))` with a 1h ttl. multi-turn chats accumulate cheaply because each turn extends a previously-cached message list.
+
+## block size
+
+vLLM's default block size is 16 tokens. on tpu it's often 64 or 128 because the attention kernel tiles on those boundaries. if rproxy's block size disagrees with the worker's by a single token, every chained hash is wrong. so on startup we read the block size off a live worker and pin rproxy's chain function to match — and refuse to start if any worker reports a different value.
+
+## the request pipeline
+
+so the general pipeline whenever we get a request from a user:
+
+1. call vLLM's `/tokenize` endpoint on the prompt. this auto-applies the chat template and tokenizes things so we have the same tokens vLLM will see.
+2. break the tokens up into blocks of `block_size` and run our chained hash algorithm.
+3. look up if `tokenize:<sha256(model, messages)>` is already a key. if not, insert it. avoids re-tokenizing the same prompt.
+4. for each block hash from step 2, query `block:<model>:<hash>`.
+    - keep iterating, intersecting the set of workers that show up at every depth
+    - stop at the first block where the intersection becomes empty; the deepest non-empty intersection is the longest shared prefix
+    - matching is strictly contiguous from block 0 — a hole in the middle terminates the match
+5. workers in that intersection get the 0.5x discount applied to the score from the slot-count formula above. existing scorer picks the winner.
+
+a few invariants this preserves: cache eviction is reflected in routing within one event round-trip (a `BlockRemoved` shrinks the routing set immediately), no worker is permanently pinned (the discount is a tiebreaker, not a hard constraint), and a cold start degrades gracefully to slot-count routing because no worker matches anything yet.
