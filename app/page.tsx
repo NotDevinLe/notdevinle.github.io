@@ -44,10 +44,10 @@ export default function Home() {
               devin le
             </h1>
             <p className="text-center text-[color:var(--fg-muted)] text-sm mt-2">
-              role placeholder
+              Undergrad Researcher
             </p>
             <p className="text-center text-[color:var(--fg-muted)] text-sm">
-              affiliation placeholder
+              University of Washington
             </p>
             <div className="flex justify-center flex-wrap gap-x-4 gap-y-2 mt-5 text-sm">
               {socials.map((s) => (
