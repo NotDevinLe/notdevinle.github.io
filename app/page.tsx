@@ -20,10 +20,9 @@ const projects = [
 
 const socials = [
   { name: 'email', href: 'mailto:devin.t.le@outlook.com' },
-  { name: 'github', href: '#' },
-  { name: 'linkedin', href: '#' },
-  { name: 'x', href: '#' },
-  { name: 'cv', href: '#' },
+  { name: 'github', href: 'https://github.com/NotDevinLe' },
+  { name: 'linkedin', href: 'https://www.linkedin.com/in/devin-t-le/' },
+  { name: 'x', href: 'https://x.com/JoyCoder01' },
 ]
 
 export default function Home() {
@@ -69,12 +68,10 @@ export default function Home() {
             <h2 className="font-serif text-2xl font-bold mb-5">about me</h2>
             <div className="article-content">
               <p>
-                short intro placeholder — write a sentence or two about who you
-                are, what you work on, and what you&apos;re currently thinking about.
+                Hey, I'm Devin and I'm currently a sophomore. I enjoy playing tenis and League of Legends as well as reading reseearch papers and finding ways to contribute to research. Right now, I'm working on vLLM contributions.
               </p>
               <p>
-                second paragraph placeholder — add background on past work,
-                collaborators, or anything else worth surfacing up top.
+                I previously did research on inference time methods for LLMs as well as ML infra. Happy to connect.
               </p>
             </div>
 
@@ -82,24 +79,18 @@ export default function Home() {
               <div>
                 <h3 className="font-serif text-xl font-bold mb-3">interests</h3>
                 <ul className="list-disc pl-5 space-y-1 text-[0.95rem] leading-relaxed">
-                  <li>topic placeholder</li>
-                  <li>topic placeholder</li>
-                  <li>topic placeholder</li>
+                  <li>ML Systems</li>
+                  <li>Natural Language Processing</li>
+                  <li>Statistics</li>
                 </ul>
               </div>
               <div>
                 <h3 className="font-serif text-xl font-bold mb-3">education</h3>
                 <ul className="space-y-3 text-[0.95rem]">
                   <li>
-                    <p className="font-semibold leading-snug">school placeholder</p>
+                    <p className="font-semibold leading-snug">University of Washington - Seattle</p>
                     <p className="text-[color:var(--fg-muted)] text-sm">
-                      degree, year–year
-                    </p>
-                  </li>
-                  <li>
-                    <p className="font-semibold leading-snug">school placeholder</p>
-                    <p className="text-[color:var(--fg-muted)] text-sm">
-                      degree, year–year
+                      Bachelors of Science, 2024-2028
                     </p>
                   </li>
                 </ul>
