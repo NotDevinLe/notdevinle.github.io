@@ -23,9 +23,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   }).toLowerCase()
 
   return (
-    <article>
-      <Link href="/" className="nav-link">
-        ← back
+    <article className="max-w-[650px] mx-auto px-6 py-12 md:py-16">
+      <Link href="/blog" className="nav-link">
+        ← blog
       </Link>
 
       <header className="mt-10 mb-10">
