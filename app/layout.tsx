@@ -31,9 +31,6 @@ export default function RootLayout({
               <Link href="/blog" className="hover:text-[color:var(--fg-muted)]">
                 blog
               </Link>
-              <Link href="/about" className="hover:text-[color:var(--fg-muted)]">
-                about
-              </Link>
             </nav>
           </div>
         </header>

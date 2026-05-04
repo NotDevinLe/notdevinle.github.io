@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/posts'
 
@@ -38,8 +39,15 @@ export default function Home() {
       <section className="max-w-5xl mx-auto px-6 py-12 md:py-16">
         <div className="grid md:grid-cols-[260px_1fr] gap-10 md:gap-14">
           <aside>
-            <div className="aspect-square bg-gray-100 rounded-lg mb-5 flex items-center justify-center text-gray-400 text-sm">
-              photo
+            <div className="aspect-square rounded-lg mb-5 overflow-hidden bg-gray-100">
+              <Image
+                src="/profile.jpg"
+                alt="devin le"
+                width={520}
+                height={520}
+                className="w-full h-full object-cover"
+                priority
+              />
             </div>
             <h1 className="font-serif text-2xl font-bold text-center">
               devin le
