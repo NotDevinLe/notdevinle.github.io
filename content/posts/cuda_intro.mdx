@@ -1,0 +1,57 @@
+---
+title: "intro to cuda"
+excerpt: "the start of a kernel engineer's journey."
+date: "2026-05-14"
+author: "Le"
+readTime: "10 min read"
+---
+
+I've recently picked up the interest of writing optimized kernels for machine learning systems. That got me interested in doing research and whatnot. So now I'm going through the "Programming Massively Parallel Processors" book which is the gold standard in this field.
+
+We refer to a `host` as the cpu and a 'device' as some type of accelerator such as a gpu. Lets start with a simple program that adds two vectors.
+
+Some things to know is that cuda has two functions that are like the standard c library: `cudaMalloc` and `cudaFree`. However, they don't return a pointer, instead you have to give them one.
+
+```bash
+
+void vecAdd(float* A, float* B, float* C, int n) {
+    int size = n * sizeof(float);
+    float *A_d, *B_d, *C_d;
+
+    cudaMalloc((void **) &A_d, size);
+    cudaMalloc((void **) &B_d, size);
+    cudaMalloc((void **) &C_d, size);
+
+    cudaMemcpy(A_d, A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(B_d, B, size, cudaMemcpyHostToDevice);
+
+    vecAddKernel<<<ceil(n / 256.0), 256>>>(A_d, B_d, C_d, n);
+
+    cudaMemcpy(C, C_d, size, cudaMemcpyDeviceToHost);
+
+    cudaFree(A_d);
+    cudaFree(B_d);
+    cudaFree(C_d);
+}
+
+```
+
+We transfer the vectors from the host to the device and allocate enough memory in the global memory for it. Then, we run the kernel that handles the add operations. Afterwards, we copy the results into the host device.
+
+Lets look at the kernel code. We have to use the __global__ tag in order for the compiler to know that we're writing gpu code.
+
+When we call the kernel, we specified `<<<ceil(n / 256.0), 256>>>` which tells us there are ceil(n / 256.0) blocks and 256 threads per block. During runtime, the gpu will schedule the processor to run each. We can think of a block  
+
+Since we used the global tag, we get access to `threadIdx` which tells us the threadId within a block, `blockDim` the threads per block, and `blockIdx` the index of the current block. 
+
+```bash
+
+___global___ void vecAddKernel(float* A, float* B, float* C, int n) {
+    int i = threadIdx.x + blockDim.x * blockIdx.x;
+
+    if (i < n) {
+        C[i] = A[i] + B[i];
+    }
+}
+
+```
