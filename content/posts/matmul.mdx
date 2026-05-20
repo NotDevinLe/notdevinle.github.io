@@ -6,4 +6,28 @@ author: "Le"
 readTime: "10 min read"
 ---
 
+This is my summarization of another blog post: `https://siboehm.com/articles/22/CUDA-MMM`
+
+Here is how a naive implementation of a matrix multiplication looks. The code for it is as follows:
+
+```bash
+
+__global__ void sgemm_naive(int M, int N, int K, float alpha, const float *A,
+                            const float *B, float beta, float *C) {
+  const uint x = blockIdx.x * blockDim.x + threadIdx.x;
+  const uint y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  // if statement is necessary to make things work under tile quantization
+  if (x < M && y < N) {
+    float tmp = 0.0;
+    for (int i = 0; i < K; ++i) {
+      tmp += A[x * K + i] * B[i * N + y];
+    }
+    // C = α*(A@B)+β*C
+    C[x * N + y] = alpha * tmp + beta * C[x * N + y];
+  }
+}
+
+```
+
 ![Naive matmul diagram](/images/naive.jpg)
