@@ -30,4 +30,37 @@ __global__ void sgemm_naive(int M, int N, int K, float alpha, const float *A,
 
 ```
 
+To see how this runs, we first note that for each thread in our warp, we change the rows of matrix A (top left) and keep the same column for matrix B (top right). Our resulting elements that are computed with these three threads are shown in matrix C (bottom).
+
 ![Naive matmul diagram](/images/naive.jpg)
+
+However, this isn't exactly optimal because of the SIMD which automatically combines load instructions from the global memory into a larger load instead of many loads from different memory addresses. There are two benefits to having one larger load. Firstly, global memory accessing typically loads in 32 bytes where you probably won't need all 32 bytes, so you're loading in useless data. Imagine if you just had most of those 32 bytes be used, the speedup would be insane. Secondly, there's more overhead to doing many loads compared to just one big one.
+
+So, how do we properly load things in? We know that a warp is created from grouping 32 blocks of contiguous thread ids. This means that we have to find a way in which we assign thread ids in the same warp to optimize the compiler's global memory accessing. The idea is that we want to access memory like the diagram below.
+
+![Global Coalescing matmul diagram](/images/global_coal.jpg)
+
+This is more optimal because matrix A now shares the same row and that is loaded as one, but for matrix B now we see that the columns are side by side each other (and contiguous in memory) so we're really getting the three thread's columns in one single load! 
+
+Another cool thing the compiler does for us is it broadcasts memory by caching it. So we aren't really loading in a row for matrix A every time for each thread in the warp, it's just reusing the same value from the cache.
+
+```bash
+
+template <const uint BLOCKSIZE>
+__global__ void sgemm_global_mem_coalesce(int M, int N, int K, float alpha,
+                                          const float *A, const float *B,
+                                          float beta, float *C) {
+  const int cRow = blockIdx.x * BLOCKSIZE + (threadIdx.x / BLOCKSIZE);
+  const int cCol = blockIdx.y * BLOCKSIZE + (threadIdx.x % BLOCKSIZE);
+
+  // if statement is necessary to make things work under tile quantization
+  if (cRow < M && cCol < N) {
+    float tmp = 0.0;
+    for (int i = 0; i < K; ++i) {
+      tmp += A[cRow * K + i] * B[i * N + cCol];
+    }
+    C[cRow * N + cCol] = alpha * tmp + beta * C[cRow * N + cCol];
+  }
+}
+
+```
