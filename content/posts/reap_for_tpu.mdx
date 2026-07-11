@@ -23,12 +23,6 @@ That might look a bit intimidating but it's not bad at all. Let j be the expert 
 
 How you can think about it is that expert j contributes the inner of the summation amount for some output. If you find the average of it, then this expert will usually contribute that much. You want to remove experts that usually don't contribute much.
 
-## Reading through the original codebase
-
-this is meant as a journal for myself. There are four main files.
-
-`observer.py`. This 
-
 ## Issues with running on TPUs
 
 so the original codebase was written for pytorch on cuda. On gpus, we hook onto each MOE layers and have an observer get the scores. However, on tpus, we use a JIT compiler which means that that the compiler will compile the code in an efficient manner and all of the MOE layers will be treated as one for reducing redundancy. Therefore, a callback doesn't know which layer it comes from.
