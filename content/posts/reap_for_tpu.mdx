@@ -1,0 +1,27 @@
+---
+title: "Pruning Experts on TPUs"
+excerpt: "making reap work for the devices i have"
+date: "2026-07-19"
+author: "Le"
+readTime: "10 min read"
+---
+
+`REAP` is a paper on ways to prune experts. The reason this is so good is because for many SMOE models, they make up a majority of the parameters. By reducing the number of experts we store, we can save a lot of memory at the cost of a little performance.
+
+## Methodology
+
+`REAP` follows three steps:
+    1. Run callibration over a dataset that is representive of the usecase
+    2. Prune the model based on experts with the least score
+    3. Save model and reuse
+
+We can calculate the score of each expert by using the following formula:
+
+![reap formula](/images/reap_formula.png)
+
+That might look a bit intimidating but it's not bad at all. Let j be the expert id. We also let `X_j` be the tokens where expert j was selected. `pi_j` is the router probability for expert j under the token x. `||f_j(x)||` is simply the magnitude of the output vector of the expert under token x.
+
+How you can think about it is that expert j contributes the inner of the summation amount for some output. If you find the average of it, then this expert will usually contribute that much. You want to remove experts that usually don't contribute much.
+
+## Issues with running on TPUs
+
