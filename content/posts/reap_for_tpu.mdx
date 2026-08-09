@@ -18,6 +18,8 @@ The inner workings of the transformer block looks like below. We first pass thro
 
 ![Transformer block](/images/transformer_block.png)
 
+The MOE layer at a high level takes the tokens after attention and then routes each token to an expert (that is essentially just a smaller matrix that we use for efficiency purposes) and then use the top k experts and sum their results.
+
 ![Mixture-of-Experts layer](/images/moe_layer.png)
 
 ## Methodology
