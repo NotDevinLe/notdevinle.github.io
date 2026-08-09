@@ -8,6 +8,18 @@ readTime: "10 min read"
 
 `REAP` is a paper on ways to prune experts. The reason this is so good is because for many SMOE models, they make up a majority of the parameters. By reducing the number of experts we store, we can save a lot of memory at the cost of a little performance.
 
+## Prerequisites
+
+![Mixture-of-Experts layer](/images/moe_layer.png)
+
+Before diving too deep into the pruning, it's important to understand the model itself. First, we will embed each token. Afterwards, they get passed into a transformer block. Once one transformer block finishes being processed, it is then passed into the next and so on.
+
+![M2.7 at a glance](/images/m2_7_glance.png)
+
+The inner workings of the transformer block looks like below. 
+
+![Transformer block](/images/transformer_block.png)
+
 ## Methodology
 
 `REAP` follows three steps:
