@@ -14,9 +14,11 @@ Before diving too deep into the pruning, it's important to understand the model 
 
 ![M2.7 at a glance](/images/m2_7_glance.png)
 
-The inner workings of the transformer block looks like below. 
+The inner workings of the transformer block looks like below. We first pass through a normalization layer which is then passed into a self attention layer. This is then normalized again and then passed through a MOE feed forward layer.
 
 ![Transformer block](/images/transformer_block.png)
+
+![Mixture-of-Experts layer](/images/moe_layer.png)
 
 ## Methodology
 
