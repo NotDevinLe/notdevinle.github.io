@@ -6,7 +6,7 @@ author: "Le"
 readTime: "10 min read"
 ---
 
-`REAP` is a paper on ways to prune experts. The reason this is so good is because for many SMOE models, they make up a majority of the parameters. By reducing the number of experts we store, we can save a lot of memory at the cost of a little performance.
+`REAP` is a paper on ways to prune experts. The reason this is so good is because for many SMOE models, they make up a majority of the parameters. By reducing the number of experts we store, we can save a lot of memory at the cost of a little performance. For this post, I'll be pruning Minimax m2.7 but this will work for any model.
 
 ## Prerequisites
 
