@@ -1,0 +1,19 @@
+---
+title: "Optimizing MiniMax M2.7"
+excerpt: "making m2.7 faster and cheaper to run"
+date: "2026-08-09"
+author: "Le"
+readTime: "10 min read"
+---
+
+MiniMax M2.7 is a sparse MoE model — ~230B total params, but only ~10B active per token. That sparsity is great for quality-per-FLOP, but the full expert set still eats a ton of memory. This post covers how I'm optimizing it.
+
+## Configurations
+
+Before messing around with kernels and such, I think it's best to see how good we can get the performance with just the base code. Running the baseline across different concurrent requests, we see that for short prompts of about 1k tokens in and 128 tokens out, the tokens per seoncd scales cleanly with the concurrency.
+
+![Baseline TP8 GMU.95 bench](/images/m27_baseline_bench.png)
+ 
+ However, the prompt lengths aren't realistic in a production scenario. 
+
+![c2b GMU.97 bench](/images/m27_c2b_bench.png)
