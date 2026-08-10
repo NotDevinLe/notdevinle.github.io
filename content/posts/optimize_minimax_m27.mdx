@@ -14,6 +14,11 @@ Before messing around with kernels and such, I think it's best to see how good w
 
 ![Baseline TP8 GMU.95 bench](/images/m27_baseline_bench.png)
  
- However, the prompt lengths aren't realistic in a production scenario. 
+I also then messed with the max batched tokens per engine step which didn't really do anything. Then I decided to see if giving higher GPU memory utilization would do anything which I found did a lot.
 
 ![c2b GMU.97 bench](/images/m27_c2b_bench.png)
+
+The reason we see such a huge jump is because we essentially double our kv cache size which in turn boosts our tps. Finally, right now we only have tensor parallelism, but we can do so much more. We enable data parallel attention which essentially copies the entire attention weights to each of the TPU's chips so it reduces the communication bandwidth for the attention operations. With this, we see a massive boost in performance.
+
+![DP attention bench](/images/m27_dp_attn_bench.png)
+ 
