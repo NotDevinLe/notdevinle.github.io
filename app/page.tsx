@@ -75,7 +75,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="group block"
             >
-              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline transition-transform duration-200 group-hover:translate-x-1">
+              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline transition-transform duration-200 will-change-transform group-hover:translate-x-1">
                 <span className="font-mono text-xs text-[color:var(--fg-muted)] tabular-nums">
                   {p.tag}
                 </span>
@@ -108,7 +108,7 @@ export default function Home() {
         <div className="space-y-7">
           {posts.map((post) => (
             <Link key={post.id} href={`/posts/${post.id}`} className="group block">
-              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline transition-transform duration-200 group-hover:translate-x-1">
+              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline transition-transform duration-200 will-change-transform group-hover:translate-x-1">
                 <span className="font-mono text-xs text-[color:var(--fg-muted)] tabular-nums">
                   {new Date(post.date).getFullYear()}
                 </span>
