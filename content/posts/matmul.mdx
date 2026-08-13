@@ -10,7 +10,7 @@ This is my summarization of another blog post: `https://siboehm.com/articles/22/
 
 Here is how a naive implementation of a matrix multiplication looks. The code for it is as follows:
 
-```bash
+```cpp
 
 __global__ void sgemm_naive(int M, int N, int K, float alpha, const float *A,
                             const float *B, float beta, float *C) {
@@ -44,7 +44,7 @@ This is more optimal because matrix A now shares the same row and that is loaded
 
 Another cool thing the compiler does for us is it broadcasts memory by caching it. So we aren't really loading in a row for matrix A every time for each thread in the warp, it's just reusing the same value from the cache.
 
-```bash
+```cpp
 
 template <const uint BLOCKSIZE>
 __global__ void sgemm_global_mem_coalesce(int M, int N, int K, float alpha,

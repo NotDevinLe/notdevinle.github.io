@@ -12,7 +12,7 @@ TPUs (Tensor Processing Unit) are from google and are designed for dense linear 
 
 We can store each int4 packed together into a bigger datatype. I chose to store 8 int4s into a int32. To reinterpret this as a int4 model we have the useful function:
 
-``` bash
+```python
 def ct_u32_unpack_u4(u32_packed: jax.Array) -> jax.Array:
     u4 = jax.lax.bitcast_convert_type(u32_packed, jnp.uint4)
     return jnp.reshape(u4, u4.shape[:-2] + (-1, ))
@@ -26,7 +26,7 @@ Now you might be wondering, "isn't this really inefficient because we're constan
 
 Now we get into the implementation of how do we take a quantized model and dequantize it. We create a class called VllmCompressedTensorsWNA16 which inherits from vLLM's CompressedTensorsScheme class. This class will hold all quantization information such as the zero points, weights, scales, symmetry and other parameters. From this class, there are 5 primary functions.
 
-```bash
+```python
 create_weights(layer, output_partition_sizes, input_size_per_partition, output_size, input_size, params_dtype, weight_loader)
 ```
 
@@ -34,7 +34,7 @@ vLLM will call this to instantiate empty layers. Note that this logic is called 
 
 `PackedvLLMParameter` is a function that allows you to create matrices that pack small datatypes into larger ones (this is exactly what we want for storing our int4s into a int32). We use this to create the weight matrix that work for us. If applicable then we also instantiate empty actorder, scale, and zero point matrices.
 
-```bash
+```python
 process_weights_after_loading(layer)
 ```
 
@@ -42,13 +42,13 @@ This function is the one that actually loads everything in and makes things easi
 
 After loading, we have to process each weight matrix. Start by unpacking the matrix to be instead of int4 to be int8. The most important thing is that we have to note that columns are out of order in terms of groups. We want all columns to be adjacent to their group members. Therefore, we permute the columns based on actorder. Afterwards, we unpack all other matrices that also need to be unpacked and return this int8 matrix. Notice that we now have an int8 matrix in memory and not an int4. Now, you might be wondering why the heck would we quantize to int4 if we're just gonna dequantize to int8 and have it persist as our model during inference? This is because without doing this, we have no native optimized tpu operations for int4 and significant speed is lost. We also still do gain disk memory improvements, just not while we're serving the model. Finally, save the sorted indices for the columns after we permute them since instead of permuting the weight matrices, we now instead permute the inputs which is much cheaper.
 
-```bash
+```python
 apply_weights(layer, input)
 ```
 
 This code is just a router based on whether you fused your Q, K, and V matrices together. If it does, we call `_apply_fused`, otherwise we call `_apply_split`.
 
-```bash
+```python
 _apply_fused(layer, input, bias)
 _apply_split(layer, input, bias)
 ```
@@ -65,7 +65,7 @@ this concludes our implementation of the dense model int4 quantization code
 
 for testing, I run benchmarks a single benchmark on the Multilingual Grade School Math benchmark. We're given a question like:
 
-```bash
+```text
 Janet’s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?
 ```
 

@@ -207,6 +207,14 @@ a {
   line-height: 1.6;
 }
 
+.article-content figure[data-rehype-pretty-code-figure] {
+  margin-bottom: 1.25rem;
+}
+
+.article-content figure[data-rehype-pretty-code-figure] pre {
+  margin-bottom: 0;
+}
+
 .article-content pre code {
   font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', Menlo, monospace;
   background: none;

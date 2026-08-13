@@ -1,7 +1,23 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { MDXRemote } from 'next-mdx-remote/rsc'
+import rehypePrettyCode from 'rehype-pretty-code'
 import { getPostById, getAllPosts } from '@/lib/posts'
+
+const mdxOptions = {
+  mdxOptions: {
+    rehypePlugins: [
+      [
+        rehypePrettyCode,
+        {
+          theme: 'vitesse-dark',
+          keepBackground: false,
+          defaultLang: 'text',
+        },
+      ],
+    ] as any,
+  },
+}
 
 export async function generateStaticParams() {
   const posts = getAllPosts()
@@ -38,7 +54,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       </header>
 
       <div className="article-content">
-        <MDXRemote source={post.content} />
+        <MDXRemote source={post.content} options={mdxOptions} />
       </div>
     </article>
   )

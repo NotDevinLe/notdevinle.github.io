@@ -12,7 +12,7 @@ We refer to a `host` as the cpu and a 'device' as some type of accelerator such 
 
 Some things to know is that cuda has two functions that are like the standard c library: `cudaMalloc` and `cudaFree`. However, they don't return a pointer, instead you have to give them one.
 
-```bash
+```cpp
 
 void vecAdd(float* A, float* B, float* C, int n) {
     int size = n * sizeof(float);
@@ -44,7 +44,7 @@ When we call the kernel, we specified `<<<ceil(n / 256.0), 256>>>` which tells u
 
 Since we used the global tag, we get access to `threadIdx` which tells us the threadId within a block, `blockDim` the threads per block, and `blockIdx` the index of the current block. 
 
-```bash
+```cpp
 
 ___global___ void vecAddKernel(float* A, float* B, float* C, int n) {
     int i = threadIdx.x + blockDim.x * blockIdx.x;
