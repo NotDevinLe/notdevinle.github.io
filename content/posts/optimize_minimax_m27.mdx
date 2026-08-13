@@ -21,4 +21,5 @@ I also then messed with the max batched tokens per engine step which didn't real
 The reason we see such a huge jump is because we essentially double our kv cache size which in turn boosts our tps. Finally, right now we only have tensor parallelism, but we can do so much more. We enable data parallel attention which essentially copies the entire attention weights to each of the TPU's chips so it reduces the communication bandwidth for the attention operations. With this, we see a massive boost in performance.
 
 ![DP attention bench](/images/m27_dp_attn_bench.png)
- 
+
+However, this throughput does not come for free. We see that we lose single stream performance due to running with less tensor parallelism per request.

@@ -20,7 +20,7 @@ export default function Blog() {
               <span className="post-date">
                 {new Date(post.date).toLocaleDateString('en-CA')}
               </span>
-              <h2 className="post-title group-hover:opacity-70 transition-opacity">
+              <h2 className="post-title">
                 {post.title.toLowerCase()}
               </h2>
               <p className="post-excerpt">{post.excerpt.toLowerCase()}</p>

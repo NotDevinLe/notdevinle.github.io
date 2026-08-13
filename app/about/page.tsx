@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function About() {
   return (
-    <div>
+    <div className="max-w-[650px] mx-auto px-6 py-12 md:py-16">
       <Link href="/" className="nav-link">
         ← home
       </Link>
