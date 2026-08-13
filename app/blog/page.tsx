@@ -5,8 +5,8 @@ export default function Blog() {
   const posts = getAllPosts()
 
   return (
-    <div className="max-w-[650px] mx-auto px-6 py-12 md:py-16">
-      <h1 className="font-serif text-[2rem] font-bold leading-tight mb-2">
+    <div className="max-w-[650px] mx-auto px-6 py-12 md:py-16 fade-up">
+      <h1 className="font-serif text-[2rem] font-bold leading-tight mb-2 blink-cursor">
         writing
       </h1>
       <p className="text-[color:var(--fg-muted)] mb-10 text-[0.95rem]">

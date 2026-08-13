@@ -28,8 +28,8 @@ export default function Home() {
 
   return (
     <div className="max-w-[720px] mx-auto px-6">
-      <section className="py-14 md:py-20">
-        <h1 className="font-serif text-3xl md:text-4xl font-bold leading-tight">
+      <section className="py-14 md:py-20 fade-up">
+        <h1 className="font-serif text-3xl md:text-4xl font-bold leading-tight blink-cursor">
           devin le
         </h1>
         <p className="text-[color:var(--fg-muted)] mt-2">
@@ -64,8 +64,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="projects" className="py-12 border-t border-[color:var(--border)]">
-        <h2 className="font-serif text-2xl font-bold mb-8">selected projects</h2>
+      <section id="projects" className="py-12 border-t border-[color:var(--border)] fade-up fade-up-1">
+        <h2 className="font-serif text-2xl font-bold mb-8 section-heading">selected projects</h2>
         <div className="space-y-7">
           {projects.map((p) => (
             <a
@@ -75,7 +75,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="group block"
             >
-              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline">
+              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline transition-transform duration-200 group-hover:translate-x-1">
                 <span className="font-mono text-xs text-[color:var(--fg-muted)] tabular-nums">
                   {p.tag}
                 </span>
@@ -93,8 +93,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-12 border-t border-[color:var(--border)]">
-        <h2 className="font-serif text-2xl font-bold mb-2">selected posts</h2>
+      <section className="py-12 border-t border-[color:var(--border)] fade-up fade-up-2">
+        <h2 className="font-serif text-2xl font-bold mb-2 section-heading">selected posts</h2>
         <p className="text-[color:var(--fg-muted)] text-sm mb-8">
           see{' '}
           <Link
@@ -108,7 +108,7 @@ export default function Home() {
         <div className="space-y-7">
           {posts.map((post) => (
             <Link key={post.id} href={`/posts/${post.id}`} className="group block">
-              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline">
+              <article className="grid grid-cols-[56px_1fr] sm:grid-cols-[72px_1fr] gap-4 sm:gap-6 items-baseline transition-transform duration-200 group-hover:translate-x-1">
                 <span className="font-mono text-xs text-[color:var(--fg-muted)] tabular-nums">
                   {new Date(post.date).getFullYear()}
                 </span>

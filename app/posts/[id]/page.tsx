@@ -23,7 +23,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   }).toLowerCase()
 
   return (
-    <article className="max-w-[650px] mx-auto px-6 py-12 md:py-16">
+    <article className="max-w-[650px] mx-auto px-6 py-12 md:py-16 fade-up">
       <Link href="/blog" className="nav-link">
         ← blog
       </Link>
